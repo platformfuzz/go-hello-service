@@ -1,0 +1,33 @@
+{
+  "name": "Go Hello Service",
+  "image": "mcr.microsoft.com/devcontainers/go:1.24",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-vscode.vscode-json",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.gopath": "/go",
+        "go.goroot": "/usr/local/go"
+      }
+    }
+  },
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "Hello Service",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "go mod download && git clone https://github.com/ko-build/ko.git /tmp/ko && cd /tmp/ko && go install . && rm -rf /tmp/ko",
+  "remoteUser": "vscode"
+}
