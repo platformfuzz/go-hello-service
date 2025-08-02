@@ -128,6 +128,11 @@ jobs:
         env:
           KO_DOCKER_REPO: ghcr.io/platformfuzz/go-hello-service
         run: |
-          ko build ./cmd/server \
+          echo "Current directory: $(pwd)"
+          echo "ko.yaml contents:"
+          cat ko.yaml
+
+          echo "Building multi-platform image with ko..."
+          ko build --base-import-paths ./cmd/server \
             --platform=linux/amd64,linux/arm64 \
             --tags latest
