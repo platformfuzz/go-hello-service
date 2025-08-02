@@ -1,0 +1,8 @@
+defaultBaseImage: gcr.io/distroless/static:nonroot
+platforms:
+  - linux/amd64
+  - linux/arm64
+labels:
+  - "org.opencontainers.image.source=https://github.com/johna/go-hello-service"
+  - "org.opencontainers.image.description=Minimal Go HTTP service with health check"
+  - "org.opencontainers.image.licenses=MIT"
