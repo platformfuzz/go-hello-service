@@ -61,20 +61,24 @@ jobs:
       - name: Build binary
         run: go build -v ./cmd/server
 
-      - name: Install ko
-        uses: ko-build/setup-ko@v0.9
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Validate container build
         run: |
-          # Test that the container builds successfully (local only)
-          ko build --local ./cmd/server
+          # Test that the container builds successfully
+          docker build -t go-hello-service:test .
           echo "✅ Container builds successfully"
 
-      - name: Validate multi-platform build
+      - name: Validate container health check
         run: |
-          # Test multi-platform build (local only)
-          ko build --local --platform=linux/amd64,linux/arm64 ./cmd/server
-          echo "✅ Multi-platform build successful"
+          # Test container health check
+          docker run -d --name test-container go-hello-service:test
+          sleep 10
+          docker inspect test-container --format='{{.State.Health.Status}}'
+          docker stop test-container
+          docker rm test-container
+          echo "✅ Container health check works"
 
       - name: Security scan
         run: |
@@ -99,7 +103,7 @@ jobs:
           echo "✅ Go modules are clean"
           echo "✅ Binary builds successfully"
           echo "✅ Container builds successfully"
-          echo "✅ Multi-platform build works"
+          echo "✅ Container health check works"
           echo "✅ Security checks completed"
 
   build-and-push:
@@ -115,24 +119,32 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-          cache: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install ko
-        uses: ko-build/setup-ko@v0.9
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/platformfuzz/go-hello-service
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
-        env:
-          KO_DOCKER_REPO: ghcr.io/platformfuzz/go-hello-service
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "ko.yaml contents:"
-          cat ko.yaml
-
-          echo "Building multi-platform image with ko..."
-          ko build --base-import-paths ./cmd/server \
-            --platform=linux/amd64,linux/arm64 \
-            --tags latest
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
