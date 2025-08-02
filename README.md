@@ -1,12 +1,12 @@
 # Go Hello Service
 
-A minimal Go HTTP service with health checks, built with `ko` and deployed via GitHub Actions.
+A minimal Go HTTP service with health checks, built with Docker and deployed via GitHub Actions.
 
 ## 🚀 Features
 
 - **HTTP Server**: Simple Go HTTP server with `/` and `/health` endpoints
 - **Health Checks**: Built-in health check endpoint for container orchestration
-- **Containerized**: Built with `ko` using Alpine Linux base image
+- **Containerized**: Built with Docker using Alpine Linux base image
 - **CI/CD**: Automated build, test, and deployment pipeline
 - **Multi-platform**: Supports Linux AMD64 and ARM64
 - **Security**: Automated vulnerability scanning and linting
@@ -44,22 +44,26 @@ go test ./cmd/server
 
 ## 🐳 Container Build
 
-### Using ko (Recommended)
+### Using Docker (Recommended)
 
 ```bash
 # Build locally
-ko build --local ./cmd/server
+docker build -t go-hello-service .
 
-# Build and push
-ko build ./cmd/server --platform=linux/amd64,linux/arm64
+# Run locally
+docker run -p 8080:8080 go-hello-service
+
+# Build for multiple platforms
+docker buildx build --platform linux/amd64,linux/arm64 -t go-hello-service .
 ```
 
 ### Container Details
 
 - **Base Image**: `alpine:latest`
-- **Binary**: `/server`
+- **Binary**: `/app/server`
 - **Port**: `8080` (configurable via `PORT` env var)
-- **Health Check**: Available at `/health`
+- **Health Check**: Built-in Docker health check with curl
+- **User**: Non-root user (`appuser`)
 
 ## 🏥 Health Checks
 
@@ -75,16 +79,25 @@ The service provides a `/health` endpoint that returns:
 }
 ```
 
-### Container Health Check
+### Docker Health Check
 
-For container orchestration (ECS, Kubernetes, etc.), use:
+The container includes a built-in health check:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+```
+
+### Container Orchestration Health Check
+
+For ECS, Kubernetes, etc., use:
 
 ```json
 {
   "healthCheck": {
     "command": [
       "CMD-SHELL",
-      "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"
+      "curl -f http://localhost:8080/health || exit 1"
     ],
     "interval": 30,
     "timeout": 5,
@@ -94,7 +107,7 @@ For container orchestration (ECS, Kubernetes, etc.), use:
 }
 ```
 
-**Note**: Uses `wget` (available in Alpine base image) for HTTP health checks.
+**Note**: Uses `curl` (available in Alpine base image) for HTTP health checks.
 
 ## 🔄 CI/CD Pipeline
 
@@ -106,8 +119,8 @@ The `.github/workflows/ci.yml` workflow provides:
 
 - ✅ **Go Module Check**: Ensures `go.mod` is clean
 - ✅ **Binary Build**: Validates Go compilation
-- ✅ **Container Build**: Tests `ko` build process
-- ✅ **Multi-platform**: Validates AMD64/ARM64 builds
+- ✅ **Container Build**: Tests Docker build process
+- ✅ **Health Check Test**: Validates container health check
 - ✅ **Security Scan**: Basic security checks
 - ✅ **Linting**: `golangci-lint` integration
 - ✅ **Vulnerability Check**: `govulncheck` integration
@@ -121,7 +134,7 @@ The `.github/workflows/ci.yml` workflow provides:
 
 ### Registry
 
-Images are published to: `ghcr.io/platformfuzz/go-hello-service/server:latest`
+Images are published to: `ghcr.io/platformfuzz/go-hello-service:latest`
 
 ## 🛠️ Configuration
 
@@ -129,13 +142,14 @@ Images are published to: `ghcr.io/platformfuzz/go-hello-service/server:latest`
 
 - `PORT`: Server port (default: `8080`)
 
-### ko Configuration
+### Docker Configuration
 
-See `ko.yaml` for build configuration:
+See `Dockerfile` for build configuration:
 
-- **Base Image**: Alpine Linux
-- **Platforms**: AMD64, ARM64
-- **Labels**: OCI metadata
+- **Multi-stage build**: Go builder + Alpine runtime
+- **Base Image**: Alpine Linux with curl
+- **Security**: Non-root user
+- **Health Check**: Built-in curl-based health check
 
 ## 📊 API Endpoints
 
@@ -185,7 +199,7 @@ Returns service health status.
 ├── .vscode/
 │   ├── extensions.json      # Recommended extensions
 │   └── settings.json        # Go development settings
-├── ko.yaml                  # ko build configuration
+├── Dockerfile               # Docker build configuration
 ├── go.mod                   # Go module definition
 └── README.md               # This file
 ```
@@ -213,6 +227,22 @@ go test -cover ./...
 go test ./cmd/server
 ```
 
+### Docker Commands
+
+```bash
+# Build image
+docker build -t go-hello-service .
+
+# Run container
+docker run -p 8080:8080 go-hello-service
+
+# Check health
+docker inspect go-hello-service --format='{{.State.Health.Status}}'
+
+# Build multi-platform
+docker buildx build --platform linux/amd64,linux/arm64 -t go-hello-service .
+```
+
 ## 🚀 Deployment
 
 ### ECS Fargate
@@ -223,7 +253,7 @@ go test ./cmd/server
   "containerDefinitions": [
     {
       "name": "server",
-      "image": "ghcr.io/platformfuzz/go-hello-service/server:latest",
+      "image": "ghcr.io/platformfuzz/go-hello-service:latest",
       "portMappings": [
         {
           "containerPort": 8080,
@@ -233,7 +263,7 @@ go test ./cmd/server
       "healthCheck": {
         "command": [
           "CMD-SHELL",
-          "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"
+          "curl -f http://localhost:8080/health || exit 1"
         ],
         "interval": 30,
         "timeout": 5,
@@ -251,13 +281,13 @@ go test ./cmd/server
 version: '3.8'
 services:
   server:
-    image: ghcr.io/platformfuzz/go-hello-service/server:latest
+    image: ghcr.io/platformfuzz/go-hello-service:latest
     ports:
       - "8080:8080"
     environment:
       - PORT=8080
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -269,6 +299,7 @@ services:
 - **Vulnerability Scanning**: Automated `govulncheck` integration
 - **Code Quality**: `golangci-lint` enforcement
 - **Minimal Base Image**: Alpine Linux for reduced attack surface
+- **Non-root User**: Container runs as non-root user
 - **Graceful Shutdown**: Proper signal handling
 - **Error Handling**: Comprehensive error management
 

@@ -1,8 +1,0 @@
-defaultBaseImage: alpine:latest
-platforms:
-  - linux/amd64
-  - linux/arm64
-labels:
-  org.opencontainers.image.source: https://github.com/platformfuzz/go-hello-service
-  org.opencontainers.image.description: Go Hello Service
-  org.opencontainers.image.licenses: MIT
