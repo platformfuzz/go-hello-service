@@ -1,37 +1,71 @@
 # Go Hello Service
 
-A minimal Go HTTP service with health checks, designed for containerized deployment on platforms like ECS, Kubernetes, and Cloud Run.
+A minimal Go HTTP service with health checks, built with `ko` and deployed via GitHub Actions.
 
 ## 🚀 Features
 
-- **HTTP Server**: Simple Go HTTP server with JSON responses
-- **Health Checks**: Built-in `/health` endpoint for monitoring
-- **Graceful Shutdown**: Handles SIGTERM and SIGINT signals
-- **Structured Logging**: Request logging with timing
-- **Container Ready**: Optimized for container deployment
-- **Multi-platform**: Supports linux/amd64 and linux/arm64
+- **HTTP Server**: Simple Go HTTP server with `/` and `/health` endpoints
+- **Health Checks**: Built-in health check endpoint for container orchestration
+- **Containerized**: Built with `ko` using Alpine Linux base image
+- **CI/CD**: Automated build, test, and deployment pipeline
+- **Multi-platform**: Supports Linux AMD64 and ARM64
+- **Security**: Automated vulnerability scanning and linting
 
-## 📋 Endpoints
+## 📋 Prerequisites
 
-### `GET /`
+- **Go 1.24+**: For local development
+- **Docker**: For container operations
+- **GitHub**: For CI/CD pipeline
 
-Returns a hello message with hostname and timestamp.
+## 🏗️ Local Development
 
-**Response:**
+### Using DevContainer (Recommended)
 
-```json
-{
-  "message": "Hello, World!",
-  "timestamp": "2024-01-01T12:00:00Z",
-  "hostname": "container-hostname"
-}
+1. **Open in VS Code**: Clone and open the repository
+2. **DevContainer**: VS Code will prompt to reopen in container
+3. **Ready**: All tools pre-installed in the container
+
+### Manual Setup
+
+```bash
+# Clone the repository
+git clone git@github.com:platformfuzz/go-hello-service.git
+cd go-hello-service
+
+# Install dependencies
+go mod tidy
+
+# Run locally
+go run ./cmd/server
+
+# Test
+go test ./cmd/server
 ```
 
-### `GET /health`
+## 🐳 Container Build
 
-Health check endpoint for monitoring and load balancers.
+### Using ko (Recommended)
 
-**Response:**
+```bash
+# Build locally
+ko build --local ./cmd/server
+
+# Build and push
+ko build ./cmd/server --platform=linux/amd64,linux/arm64
+```
+
+### Container Details
+
+- **Base Image**: `alpine:latest`
+- **Binary**: `/server`
+- **Port**: `8080` (configurable via `PORT` env var)
+- **Health Check**: Available at `/health`
+
+## 🏥 Health Checks
+
+### HTTP Health Check
+
+The service provides a `/health` endpoint that returns:
 
 ```json
 {
@@ -41,125 +75,213 @@ Health check endpoint for monitoring and load balancers.
 }
 ```
 
-## 🐳 Container Deployment
+### Container Health Check
+
+For container orchestration (ECS, Kubernetes, etc.), use:
+
+```json
+{
+  "healthCheck": {
+    "command": [
+      "CMD-SHELL",
+      "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"
+    ],
+    "interval": 30,
+    "timeout": 5,
+    "retries": 3,
+    "startPeriod": 60
+  }
+}
+```
+
+**Note**: Uses `wget` (available in Alpine base image) for HTTP health checks.
+
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+The `.github/workflows/ci.yml` workflow provides:
+
+#### **PR Validation**
+
+- ✅ **Go Module Check**: Ensures `go.mod` is clean
+- ✅ **Binary Build**: Validates Go compilation
+- ✅ **Container Build**: Tests `ko` build process
+- ✅ **Multi-platform**: Validates AMD64/ARM64 builds
+- ✅ **Security Scan**: Basic security checks
+- ✅ **Linting**: `golangci-lint` integration
+- ✅ **Vulnerability Check**: `govulncheck` integration
+- ✅ **Tests**: Automated test suite
+
+#### **Main Branch Deployment**
+
+- 🚀 **Build & Push**: Publishes to GitHub Container Registry
+- 🏷️ **Tagging**: Automatic `latest` and versioned tags
+- 📦 **Multi-platform**: AMD64 and ARM64 images
+
+### Registry
+
+Images are published to: `ghcr.io/platformfuzz/go-hello-service/server:latest`
+
+## 🛠️ Configuration
 
 ### Environment Variables
 
 - `PORT`: Server port (default: `8080`)
 
-### Docker Run
+### ko Configuration
 
-```bash
-# Run with default port
-docker run -p 8080:8080 ghcr.io/platformfuzz/go-hello-service/server-967d5646a4ce288d6928f233b912d34d:latest
+See `ko.yaml` for build configuration:
 
-# Run with custom port
-docker run -p 3000:3000 -e PORT=3000 ghcr.io/platformfuzz/go-hello-service/server-967d5646a4ce288d6928f233b912d34d:latest
-```
+- **Base Image**: Alpine Linux
+- **Platforms**: AMD64, ARM64
+- **Labels**: OCI metadata
 
-## ☁️ ECS Deployment
+## 📊 API Endpoints
 
-### Task Definition Health Check
+### GET `/`
 
-```json
-{
-  "healthCheck": {
-    "command": [
-      "CMD-SHELL",
-      "wget --quiet --spider http://localhost:8080/health || exit 1"
-    ],
-    "interval": 30,
-    "timeout": 5,
-    "retries": 3,
-    "startPeriod": 60
-  }
-}
-```
+Returns a hello message with hostname and timestamp.
 
-### For Custom Port
-
-If you set a custom `PORT` environment variable, update the health check accordingly:
+**Response**:
 
 ```json
 {
-  "healthCheck": {
-    "command": [
-      "CMD-SHELL",
-      "wget --quiet --spider http://localhost:${PORT}/health || exit 1"
-    ],
-    "interval": 30,
-    "timeout": 5,
-    "retries": 3,
-    "startPeriod": 60
-  }
+  "message": "Hello, World!",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "hostname": "container-hostname"
 }
 ```
 
-## 🏗️ Development
+### GET `/health`
 
-### Prerequisites
+Returns service health status.
 
-- Go 1.24+
-- Docker
-- ko (for building containers)
+**Response**:
 
-### Local Development
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "version": "1.0.0"
+}
+```
+
+## 🔧 Development
+
+### Project Structure
+
+```
+.
+├── cmd/
+│   └── server/
+│       ├── main.go          # Main server implementation
+│       └── main_test.go     # Unit tests
+├── .github/
+│   └── workflows/
+│       └── ci.yml           # CI/CD pipeline
+├── .devcontainer/
+│   └── devcontainer.json    # VS Code DevContainer
+├── .vscode/
+│   ├── extensions.json      # Recommended extensions
+│   └── settings.json        # Go development settings
+├── ko.yaml                  # ko build configuration
+├── go.mod                   # Go module definition
+└── README.md               # This file
+```
+
+### Adding Dependencies
 
 ```bash
-# Run locally
-go run ./cmd/server
+# Add a new dependency
+go get github.com/example/package
 
-# Run with custom port
-PORT=3000 go run ./cmd/server
+# Update go.mod
+go mod tidy
+```
 
-# Build binary
-go build -o server ./cmd/server
+### Running Tests
 
-# Test
+```bash
+# Run all tests
+go test ./...
+
+# Run with coverage
+go test -cover ./...
+
+# Run specific test
 go test ./cmd/server
 ```
 
-### DevContainer
+## 🚀 Deployment
 
-This project includes a DevContainer configuration for VS Code:
+### ECS Fargate
 
-1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-2. Open the project in VS Code
-3. When prompted, click "Reopen in Container"
+```json
+{
+  "family": "go-hello-service",
+  "containerDefinitions": [
+    {
+      "name": "server",
+      "image": "ghcr.io/platformfuzz/go-hello-service/server:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
+```
 
-## 🔧 CI/CD
+### Docker Compose
 
-The project uses GitHub Actions for automated:
+```yaml
+version: '3.8'
+services:
+  server:
+    image: ghcr.io/platformfuzz/go-hello-service/server:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+```
 
-- **Testing**: Unit tests and integration tests
-- **Linting**: golangci-lint for code quality
-- **Security**: govulncheck for vulnerability scanning
-- **Building**: ko for container image building
-- **Publishing**: Automatic image publishing to GHCR
+## 🔒 Security
 
-### Workflow Triggers
+- **Vulnerability Scanning**: Automated `govulncheck` integration
+- **Code Quality**: `golangci-lint` enforcement
+- **Minimal Base Image**: Alpine Linux for reduced attack surface
+- **Graceful Shutdown**: Proper signal handling
+- **Error Handling**: Comprehensive error management
 
-- **Pull Requests**: Validation, linting, security scanning
-- **Main Branch**: Build and publish container images
-
-## 📦 Container Images
-
-Images are published to GitHub Container Registry:
-
-- **Repository**: `ghcr.io/platformfuzz/go-hello-service/server-967d5646a4ce288d6928f233b912d34d`
-- **Tags**: `latest`, `v0.0.1`, etc.
-- **Platforms**: linux/amd64, linux/arm64
-- **Base Image**: Alpine Linux (for health check compatibility)
-
-## 🛠️ Technology Stack
-
-- **Language**: Go 1.24
-- **Framework**: Gorilla Mux (HTTP routing)
-- **Container**: ko (Go-native container building)
-- **Base Image**: Alpine Linux
-- **CI/CD**: GitHub Actions
-- **Registry**: GitHub Container Registry (GHCR)
-
-## 📄 License
+## 📝 License
 
 MIT License - see LICENSE file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Ensure all tests pass
+5. Submit a pull request
+
+The CI/CD pipeline will automatically validate your changes before merging.
