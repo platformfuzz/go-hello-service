@@ -188,6 +188,9 @@ jobs:
           fi
 
       - name: Build and push
+        env:
+          KO_DOCKER_REPO: ghcr.io/platformfuzz/go-hello-service
         run: |
-          # Build and push with version tag and latest
-          IMAGE_REF=$(ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }},latest)
+          ko build ./cmd/server \
+            --platform=linux/amd64,linux/arm64 \
+            --tags ${{ steps.version.outputs.version }},latest
