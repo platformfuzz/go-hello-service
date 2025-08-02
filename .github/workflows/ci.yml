@@ -190,11 +190,14 @@ jobs:
       - name: Build and push
         run: |
           # Build and push with version tag
-          ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }}
+          IMAGE_REF=$(ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }})
 
-          # Also tag as latest
-          docker tag ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }} ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:latest
+          # Extract the image name without tag
+          IMAGE_NAME=$(echo "$IMAGE_REF" | cut -d':' -f1)
 
-          echo "Published: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}"
-          echo "Published: ghcr.io/${{ github.repository }}:latest"
+          # Tag as latest and push
+          docker tag "$IMAGE_REF" "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:latest"
+
+          echo "Published: $IMAGE_REF"
+          echo "Published: $IMAGE_NAME:latest"
