@@ -189,17 +189,15 @@ jobs:
 
       - name: Build and push
         run: |
-          # Build and push with version tag only
+          # Build with ko and capture the output
+          IMAGE_REF=$(ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }})
+
+          # Extract the clean repository name
           CLEAN_REPO_NAME="ghcr.io/platformfuzz/go-hello-service"
-
-          # Build with ko and tag directly with clean name
-          ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }} --image-refs /tmp/image-refs
-
-          # Get the built image reference
-          IMAGE_REF=$(cat /tmp/image-refs | head -1)
 
           # Tag with clean repository name and push
           docker tag "$IMAGE_REF" "$CLEAN_REPO_NAME:${{ steps.version.outputs.version }}"
           docker push "$CLEAN_REPO_NAME:${{ steps.version.outputs.version }}"
 
+          echo "Published: $IMAGE_REF"
           echo "Published: $CLEAN_REPO_NAME:${{ steps.version.outputs.version }}"
