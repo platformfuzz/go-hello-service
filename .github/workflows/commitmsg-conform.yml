@@ -1,6 +1,7 @@
 name: Commit Message Conformance
 on:
-  pull_request: {}
+  pull_request:
+    branches: [main]
 permissions:
   statuses: write
   checks: write

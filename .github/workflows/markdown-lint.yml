@@ -1,7 +1,8 @@
 name: Markdown Lint
 
 on:
-  pull_request: {}
+  pull_request:
+    branches: [main]
 
 permissions:
   statuses: write
