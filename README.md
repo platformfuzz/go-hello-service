@@ -1,64 +1,19 @@
-# 🚀 Go Hello Service
+# Go Hello Service
 
-A minimal Go-based HTTP service with health checks, designed for cloud-native deployment with multiple deployment targets.
+A minimal Go HTTP service with health checks, designed for containerized deployment on platforms like ECS, Kubernetes, and Cloud Run.
 
-## ✨ Features
+## 🚀 Features
 
-- **Minimal HTTP Server**: Exposes `/` and `/health` endpoints
-- **Graceful Shutdown**: Handles SIGTERM/SIGINT signals properly
-- **Structured Logging**: Request logging with timing information
-- **Health Checks**: JSON health endpoint for monitoring
-- **Containerized**: Built with `ko` for OCI-compliant images
-- **Multi-Platform**: Supports linux/amd64 and linux/arm64
-- **Cloud Ready**: Deployable to ECS Fargate, Cloud Run, and more
+- **HTTP Server**: Simple Go HTTP server with JSON responses
+- **Health Checks**: Built-in `/health` endpoint for monitoring
+- **Graceful Shutdown**: Handles SIGTERM and SIGINT signals
+- **Structured Logging**: Request logging with timing
+- **Container Ready**: Optimized for container deployment
+- **Multi-platform**: Supports linux/amd64 and linux/arm64
 
-## 🏗️ Architecture
+## 📋 Endpoints
 
-```plaintext
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Load Balancer │───▶│  Hello Service  │───▶│   Health Check  │
-│   (ALB/Nginx)   │    │   (Port 8080)   │    │   (/health)     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Development Container (Recommended)
-
-1. **Open in VS Code with Dev Containers**:
-   - Install the "Dev Containers" extension
-   - Open the project folder
-   - Click "Reopen in Container" when prompted
-
-### Local Development
-
-1. **Clone and build**:
-
-   ```bash
-   git clone git@github.com:platformfuzz/go-hello-service.git
-   cd go-hello-service
-   go mod download
-   go run ./cmd/server
-   ```
-
-2. **Test the endpoints**:
-
-   ```bash
-   curl http://localhost:8080/
-   curl http://localhost:8080/health
-   ```
-
-### Docker Compose (Local)
-
-```bash
-docker-compose up --build
-```
-
-Access the service at `http://localhost:8080`
-
-## 📡 API Endpoints
-
-### GET `/`
+### `GET /`
 
 Returns a hello message with hostname and timestamp.
 
@@ -67,245 +22,144 @@ Returns a hello message with hostname and timestamp.
 ```json
 {
   "message": "Hello, World!",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "hostname": "server-123"
+  "timestamp": "2024-01-01T12:00:00Z",
+  "hostname": "container-hostname"
 }
 ```
 
-### GET `/health`
+### `GET /health`
 
-Health check endpoint for monitoring systems.
+Health check endpoint for monitoring and load balancers.
 
 **Response:**
 
 ```json
 {
   "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00Z",
+  "timestamp": "2024-01-01T12:00:00Z",
   "version": "1.0.0"
 }
 ```
 
-## 🐳 Containerization with `ko`
-
-This project uses [`ko`](https://github.com/ko-build/ko) for building OCI-compliant images without Dockerfiles.
-
-### Build and Push
-
-```bash
-# Install ko
-go install github.com/ko-build/ko@latest
-
-# Build and push to registry
-KO_DOCKER_REPO=ghcr.io/platformfuzz/go-hello-service ko build ./cmd/server
-
-# Build locally without pushing
-ko build --local ./cmd/server
-
-# Build for multiple platforms
-ko build --platform=linux/amd64,linux/arm64 ./cmd/server
-```
-
-### Local Build
-
-```bash
-# Build locally without pushing
-ko build --local ./cmd/server
-```
-
-## ☁️ Deployment Options
-
-### A. Cloud Run (Google Cloud)
-
-```bash
-gcloud run deploy go-hello-service \
-  --image ghcr.io/platformfuzz/go-hello-service:latest \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8080
-```
-
-### B. App Runner (AWS)
-
-```bash
-aws apprunner create-service \
-  --service-name go-hello-service \
-  --source-configuration '{
-    "ImageRepository": {
-      "ImageIdentifier": "ghcr.io/platformfuzz/go-hello-service:latest",
-      "ImageConfiguration": {
-        "Port": "8080"
-      }
-    }
-  }'
-```
-
-## 🔧 Configuration
+## 🐳 Container Deployment
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT`   | `8080`  | Server port |
+- `PORT`: Server port (default: `8080`)
 
-### Health Check Configuration
-
-The service includes built-in health checks:
-
-- **Path**: `/health`
-- **Expected Status**: `200 OK`
-- **Response Time**: < 5 seconds
-- **Interval**: 30 seconds (configurable per platform)
-
-## 🧪 Testing & Linting
+### Docker Run
 
 ```bash
-# Run unit tests
-go test ./...
+# Run with default port
+docker run -p 8080:8080 ghcr.io/platformfuzz/go-hello-service/server-967d5646a4ce288d6928f233b912d34d:latest
 
-# Run with coverage
-go test -cover ./...
-
-# Run linting locally
-golangci-lint run
-
-# Run all checks
-go test ./... && golangci-lint run
+# Run with custom port
+docker run -p 3000:3000 -e PORT=3000 ghcr.io/platformfuzz/go-hello-service/server-967d5646a4ce288d6928f233b912d34d:latest
 ```
 
-## 📊 Monitoring & Observability
+## ☁️ ECS Deployment
 
-### Health Checks
+### Task Definition Health Check
 
-The `/health` endpoint is designed for:
+```json
+{
+  "healthCheck": {
+    "command": [
+      "CMD-SHELL",
+      "wget --quiet --spider http://localhost:8080/health || exit 1"
+    ],
+    "interval": 30,
+    "timeout": 5,
+    "retries": 3,
+    "startPeriod": 60
+  }
+}
+```
 
-- Load balancer health checks
-- Kubernetes liveness/readiness probes
-- Container orchestration platforms
+### For Custom Port
 
-### Logging
+If you set a custom `PORT` environment variable, update the health check accordingly:
 
-Request logging includes:
+```json
+{
+  "healthCheck": {
+    "command": [
+      "CMD-SHELL",
+      "wget --quiet --spider http://localhost:${PORT}/health || exit 1"
+    ],
+    "interval": 30,
+    "timeout": 5,
+    "retries": 3,
+    "startPeriod": 60
+  }
+}
+```
 
-- HTTP method
-- Request URI
-- Remote address
-- Response time
+## 🏗️ Development
 
-### Metrics (Optional)
+### Prerequisites
 
-To add Prometheus metrics, uncomment the metrics code in `main.go`.
+- Go 1.24+
+- Docker
+- ko (for building containers)
 
-## 🔄 CI/CD Pipeline
+### Local Development
 
-The GitHub Actions workflow (`/.github/workflows/ci.yml`) provides:
+```bash
+# Run locally
+go run ./cmd/server
 
-- **Validation**: Go modules, tests, builds, and security checks
+# Run with custom port
+PORT=3000 go run ./cmd/server
+
+# Build binary
+go build -o server ./cmd/server
+
+# Test
+go test ./cmd/server
+```
+
+### DevContainer
+
+This project includes a DevContainer configuration for VS Code:
+
+1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the project in VS Code
+3. When prompted, click "Reopen in Container"
+
+## 🔧 CI/CD
+
+The project uses GitHub Actions for automated:
+
+- **Testing**: Unit tests and integration tests
 - **Linting**: golangci-lint for code quality
 - **Security**: govulncheck for vulnerability scanning
-- **Building**: Multi-platform container images
-- **Publishing**: Automatic image publishing on push to main
-- **Versioning**: Semantic versioning based on commit messages
+- **Building**: ko for container image building
+- **Publishing**: Automatic image publishing to GHCR
 
-### Automatic Versioning
+### Workflow Triggers
 
-The CI/CD pipeline automatically handles versioning:
+- **Pull Requests**: Validation, linting, security scanning
+- **Main Branch**: Build and publish container images
 
-- **Manual Tags**: Push a tag (e.g., `v1.0.0`) for specific releases
-- **Automatic Semantic Versioning**: Based on commit messages:
-  - `feat:` or `feature:` → Minor version bump
-  - `fix:` or `bug:` → Patch version bump
-  - `breaking:` or `major:` → Major version bump
-  - Any other commit → Patch version bump
+## 📦 Container Images
 
-```bash
-# Examples of automatic versioning:
-git commit -m "feat: add new health endpoint"  # v1.1.0
-git commit -m "fix: resolve memory leak"       # v1.0.1
-git commit -m "breaking: change API response"  # v2.0.0
-```
+Images are published to GitHub Container Registry:
 
-## 🛠️ Development
+- **Repository**: `ghcr.io/platformfuzz/go-hello-service/server-967d5646a4ce288d6928f233b912d34d`
+- **Tags**: `latest`, `v0.0.1`, etc.
+- **Platforms**: linux/amd64, linux/arm64
+- **Base Image**: Alpine Linux (for health check compatibility)
 
-### Project Structure
+## 🛠️ Technology Stack
 
-```plaintext
-.
-├── cmd/server/          # Main application
-│   ├── main.go         # Server implementation
-│   └── main_test.go    # Unit tests
-├── .github/workflows/  # CI/CD pipeline
-├── ko.yaml            # Container build config
-├── .devcontainer/     # Development container
-└── README.md          # This file
-```
-
-### Adding Features
-
-1. **New Endpoints**: Add handlers in `cmd/server/main.go`
-2. **Configuration**: Use environment variables or flags
-3. **Testing**: Add tests in `main_test.go`
-4. **Documentation**: Update this README
-
-## 🔒 Security
-
-- **Base Image**: Uses `gcr.io/distroless/static:nonroot`
-- **Non-root User**: Runs as non-root user (UID 65532)
-- **Minimal Attack Surface**: Distroless base with no shell
-- **HTTPS Ready**: Configure TLS termination at load balancer
-
-## 📈 Performance
-
-- **Startup Time**: < 1 second
-- **Memory Usage**: ~10MB baseline
-- **CPU Usage**: Minimal for HTTP serving
-- **Concurrent Requests**: Handles hundreds of concurrent connections
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+- **Language**: Go 1.24
+- **Framework**: Gorilla Mux (HTTP routing)
+- **Container**: ko (Go-native container building)
+- **Base Image**: Alpine Linux
+- **CI/CD**: GitHub Actions
+- **Registry**: GitHub Container Registry (GHCR)
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-1. **Port Already in Use**:
-
-   ```bash
-   # Change port via environment
-   PORT=8081 go run ./cmd/server
-   ```
-
-2. **Container Won't Start**:
-
-   ```bash
-   # Check logs
-   docker logs <container-id>
-   ```
-
-3. **Health Check Failing**:
-
-   ```bash
-   # Test health endpoint
-   curl -f http://localhost:8080/health
-   ```
-
-### Debug Mode
-
-```bash
-# Run with debug logging
-DEBUG=true go run ./cmd/server
-```
-
----
-
-Built with ❤️ using Go and modern cloud-native practices
+MIT License - see LICENSE file for details.
