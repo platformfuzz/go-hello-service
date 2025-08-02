@@ -1,4 +1,4 @@
-defaultBaseImage: curlimages/curl:latest
+defaultBaseImage: alpine:latest
 platforms:
   - linux/amd64
   - linux/arm64
