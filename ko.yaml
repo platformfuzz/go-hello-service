@@ -6,5 +6,3 @@ labels:
   - "org.opencontainers.image.source=https://github.com/platformfuzz/go-hello-service"
   - "org.opencontainers.image.description=Minimal Go HTTP service with health check"
   - "org.opencontainers.image.licenses=MIT"
-repositories:
-  - ghcr.io/platformfuzz/go-hello-service
