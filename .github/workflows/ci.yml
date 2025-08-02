@@ -189,17 +189,5 @@ jobs:
 
       - name: Build and push
         run: |
-          # Build and push with version tag
-          IMAGE_REF=$(ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }})
-
-          # Extract the image name without tag
-          IMAGE_NAME=$(echo "$IMAGE_REF" | cut -d':' -f1)
-          echo "IMAGE_REF: $IMAGE_REF"
-          echo "IMAGE_NAME: $IMAGE_NAME"
-
-          # # Tag as latest and push
-          # docker tag "$IMAGE_REF" "$IMAGE_NAME:latest"
-          # docker push "$IMAGE_NAME:latest"
-
-          # echo "Published: $IMAGE_REF"
-          # echo "Published: $IMAGE_NAME:latest"
+          # Build and push with version tag and latest
+          IMAGE_REF=$(ko build ./cmd/server --platform=linux/amd64,linux/arm64 --tags ${{ steps.version.outputs.version }},latest --repository ghcr.io/platformfuzz/go-hello-service)
