@@ -124,73 +124,10 @@ jobs:
       - name: Install ko
         uses: ko-build/setup-ko@v0.9
 
-      - name: Determine version
-        id: version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            # Use tag version
-            VERSION=${GITHUB_REF#refs/tags/}
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "Using tag version: $VERSION"
-          else
-            # Auto-increment based on commit messages and latest tag
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-
-            # Parse latest tag
-            if [[ $LATEST_TAG =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-              MAJOR=${BASH_REMATCH[1]}
-              MINOR=${BASH_REMATCH[2]}
-              PATCH=${BASH_REMATCH[3]}
-            else
-              MAJOR=0
-              MINOR=0
-              PATCH=0
-            fi
-
-            # Check commit messages since last tag for semantic versioning
-            COMMITS_SINCE_TAG=$(git log --oneline $LATEST_TAG..HEAD 2>/dev/null || git log --oneline)
-
-            # Determine version bump based on commit types
-            MAJOR_BUMP=false
-            MINOR_BUMP=false
-            PATCH_BUMP=false
-
-            while IFS= read -r commit; do
-              if [[ $commit =~ ^[a-f0-9]+\s+(breaking|BREAKING|feat|FEAT|major|MAJOR) ]]; then
-                MAJOR_BUMP=true
-                break
-              elif [[ $commit =~ ^[a-f0-9]+\s+(feat|FEAT|feature|FEATURE|minor|MINOR) ]]; then
-                MINOR_BUMP=true
-              elif [[ $commit =~ ^[a-f0-9]+\s+(fix|FIX|patch|PATCH|bug|BUG) ]]; then
-                PATCH_BUMP=true
-              fi
-            done <<< "$COMMITS_SINCE_TAG"
-
-            # Apply version bumps
-            if [ "$MAJOR_BUMP" = true ]; then
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-            elif [ "$MINOR_BUMP" = true ]; then
-              MINOR=$((MINOR + 1))
-              PATCH=0
-            elif [ "$PATCH_BUMP" = true ]; then
-              PATCH=$((PATCH + 1))
-            else
-              # Default to patch bump for any commit
-              PATCH=$((PATCH + 1))
-            fi
-
-            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "Auto-generated version: $VERSION (from $LATEST_TAG)"
-            echo "Commit analysis: MAJOR=$MAJOR_BUMP, MINOR=$MINOR_BUMP, PATCH=$PATCH_BUMP"
-          fi
-
       - name: Build and push
         env:
           KO_DOCKER_REPO: ghcr.io/platformfuzz/go-hello-service
         run: |
           ko build ./cmd/server \
             --platform=linux/amd64,linux/arm64 \
-            --tags latest,${{ steps.version.outputs.version }}
+            --tags latest
