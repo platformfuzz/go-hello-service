@@ -1,4 +1,4 @@
-defaultBaseImage: alpine:latest
+defaultBaseImage: curlimages/curl:latest
 platforms:
   - linux/amd64
   - linux/arm64
@@ -6,10 +6,3 @@ labels:
   org.opencontainers.image.source: https://github.com/platformfuzz/go-hello-service
   org.opencontainers.image.description: Go Hello Service
   org.opencontainers.image.licenses: MIT
-builds:
-  - id: default
-    dockerfile: |
-      FROM alpine:latest
-      RUN apk add --no-cache curl
-      COPY . /
-      ENTRYPOINT ["/server"]
