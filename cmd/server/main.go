@@ -126,10 +126,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func main() {
 	// Get port from environment or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := getPort()
 
 	server := NewServer(port)
 
@@ -154,4 +151,13 @@ func main() {
 	}
 
 	log.Println("Server exited")
+}
+
+// getPort returns the port from environment variable or default
+func getPort() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return port
 }
