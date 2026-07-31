@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -66,12 +67,12 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 		// Call the next handler
 		next.ServeHTTP(w, r)
 
-		// Log the request
+		// Log the request (strip CR/LF to avoid log injection / gosec G706)
 		log.Printf(
 			"%s %s %s %v",
 			r.Method,
-			r.RequestURI,
-			r.RemoteAddr,
+			sanitizeLogField(r.URL.Path),
+			sanitizeLogField(r.RemoteAddr),
 			time.Since(start),
 		)
 	})
@@ -160,4 +161,8 @@ func getPort() string {
 		port = "8080"
 	}
 	return port
+}
+
+func sanitizeLogField(s string) string {
+	return strings.NewReplacer("\n", "", "\r", "").Replace(s)
 }
