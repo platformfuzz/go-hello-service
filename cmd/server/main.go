@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,13 +67,12 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 		// Call the next handler
 		next.ServeHTTP(w, r)
 
-		// Log the request
-		log.Printf(
-			"%s %s %s %v",
-			r.Method,
-			r.RequestURI,
-			r.RemoteAddr,
-			time.Since(start),
+		// Structured logging avoids printf-style log injection (gosec G706).
+		slog.Info("request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"remote", r.RemoteAddr,
+			"duration", time.Since(start),
 		)
 	})
 }
