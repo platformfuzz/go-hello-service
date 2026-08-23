@@ -33,7 +33,7 @@ jobs:
     uses: actionsforge/actions-govulncheck/.github/workflows/govulncheck.yml@v0.0.10
 
   test:
-    uses: actionsforge/actions-go-test/.github/workflows/go-test.yml@v0.0.8
+    uses: actionsforge/actions-go-test/.github/workflows/go-test.yml@v0.0.9
     with:
       test-pattern: "./cmd/server"
 
@@ -62,7 +62,7 @@ jobs:
         run: go build -v ./cmd/server
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Validate container build
         run: |
